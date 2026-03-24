@@ -67,10 +67,12 @@ fn scewin_search_roots() -> Vec<PathBuf> {
     let mut out = Vec::new();
     if let Ok(exe) = std::env::current_exe() {
         if let Some(dir) = exe.parent() {
+            out.push(dir.to_path_buf());
             out.push(dir.join("SCEWIN"));
         }
     }
     if let Some(dir) = std::env::current_dir().ok() {
+        out.push(dir.clone());
         out.push(dir.join("SCEWIN"));
     }
     #[cfg(debug_assertions)]
@@ -88,6 +90,10 @@ fn work_dir_in_bundle(scewin_root: &Path) -> Option<PathBuf> {
     if scewin_root.join("SCEWIN_64.exe").is_file() {
         return Some(scewin_root.to_path_buf());
     }
+    // Common SCEHUB layout: the executable can be inside one more level.
+    if let Some(found) = find_scewin_dir_recursive(scewin_root, 2) {
+        return Some(found);
+    }
     let rd = std::fs::read_dir(scewin_root).ok()?;
     let mut candidates: Vec<PathBuf> = Vec::new();
     for e in rd.flatten() {
@@ -98,6 +104,28 @@ fn work_dir_in_bundle(scewin_root: &Path) -> Option<PathBuf> {
     }
     candidates.sort();
     candidates.into_iter().next()
+}
+
+fn find_scewin_dir_recursive(root: &Path, max_depth: usize) -> Option<PathBuf> {
+    if root.join("SCEWIN_64.exe").is_file() {
+        return Some(root.to_path_buf());
+    }
+    if max_depth == 0 {
+        return None;
+    }
+    let mut dirs: Vec<PathBuf> = std::fs::read_dir(root)
+        .ok()?
+        .flatten()
+        .map(|e| e.path())
+        .filter(|p| p.is_dir())
+        .collect();
+    dirs.sort();
+    for d in dirs {
+        if let Some(found) = find_scewin_dir_recursive(&d, max_depth - 1) {
+            return Some(found);
+        }
+    }
+    None
 }
 
 pub fn nvram_path_in_work(work: &Path) -> PathBuf {
