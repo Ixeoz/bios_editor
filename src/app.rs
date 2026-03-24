@@ -9,6 +9,7 @@ use crate::validation;
 use eframe::egui;
 #[cfg(windows)]
 use raw_window_handle::{HasWindowHandle as _, RawWindowHandle};
+use std::sync::Arc;
 use std::path::PathBuf;
 use std::sync::mpsc::{self, Receiver, TryRecvError};
 
@@ -40,6 +41,21 @@ fn apply_startup_maximize(ctx: &egui::Context, frame: &mut eframe::Frame, attemp
     win32_maximize_window(frame);
     #[cfg(not(windows))]
     let _ = frame;
+}
+
+fn load_window_icon() -> Option<Arc<egui::IconData>> {
+    let decoded = image::load_from_memory_with_format(
+        include_bytes!("icon/nvram.ico"),
+        image::ImageFormat::Ico,
+    )
+    .ok()?;
+    let rgba = decoded.into_rgba8();
+    let (width, height) = rgba.dimensions();
+    Some(Arc::new(egui::IconData {
+        rgba: rgba.into_raw(),
+        width,
+        height,
+    }))
 }
 
 enum PendingTask {
@@ -76,14 +92,19 @@ enum ListFilterKind {
 }
 
 pub fn run() -> eframe::Result<()> {
+    let mut viewport = egui::ViewportBuilder::default()
+        .with_app_id("nvram_editor_scewin")
+        .with_inner_size([1480.0, 900.0])
+        .with_maximized(true)
+        .with_title("NVRAM Editor — SCEWIN / AMI");
+    if let Some(icon) = load_window_icon() {
+        viewport = viewport.with_icon(icon);
+    }
+
     let native_options = eframe::NativeOptions {
         // Still loads old `window` entry from app.ron unless app_id changes — that entry forced non-maximized size.
         persist_window: false,
-        viewport: egui::ViewportBuilder::default()
-            .with_app_id("nvram_editor_scewin")
-            .with_inner_size([1480.0, 900.0])
-            .with_maximized(true)
-            .with_title("NVRAM Editor — SCEWIN / AMI"),
+        viewport,
         ..Default::default()
     };
     eframe::run_native(

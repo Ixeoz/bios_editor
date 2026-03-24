@@ -20,3 +20,7 @@ windows-sys = { version = "0.61.2", features = [
     "Win32_UI_Shell",
     "Win32_UI_WindowsAndMessaging",
 ] }
+image = { version = "0.25.10", default-features = false, features = ["bmp", "ico", "png"] }
+
+[build-dependencies]
+winresource = "0.1"

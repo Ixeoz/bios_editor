@@ -99,6 +99,24 @@ fn main() {
 
     println!("cargo:rerun-if-changed=SCEWIN");
     println!("cargo:rerun-if-changed=build.rs");
+    println!("cargo:rerun-if-changed=src/icon/nvram.ico");
+
+    #[cfg(windows)]
+    {
+        let icon_path = manifest.join("src").join("icon").join("nvram.ico");
+        if icon_path.is_file() {
+            let mut res = winresource::WindowsResource::new();
+            res.set_icon(icon_path.to_string_lossy().as_ref());
+            if let Err(e) = res.compile() {
+                println!("cargo:warning=failed to compile Windows icon resource: {e}");
+            }
+        } else {
+            println!(
+                "cargo:warning=no icon found at {} (add src/icon/nvram.ico to embed an exe icon)",
+                icon_path.display()
+            );
+        }
+    }
 
     let bundled = src.is_dir();
     if bundled {
